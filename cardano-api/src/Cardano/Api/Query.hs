@@ -65,6 +65,7 @@ import           Cardano.Api.Certificate
 import           Cardano.Api.Eras
 import           Cardano.Api.KeysShelley
 import           Cardano.Api.Modes
+import           Cardano.Api.NetworkId
 import           Cardano.Api.ProtocolParameters
 import           Cardano.Api.TxBody
 import           Cardano.Api.Value
@@ -129,8 +130,9 @@ data QueryInShelleyBasedEra era result where
 
      QueryStakeAddresses
        :: Set StakeCredential
-       -> QueryInShelleyBasedEra era (Map StakeCredential Lovelace,
-                                      Map StakeCredential PoolId)
+       -> NetworkId
+       -> QueryInShelleyBasedEra era (Map StakeAddress Lovelace,
+                                      Map StakeAddress PoolId)
 
      -- TODO: Need to update ledger-specs dependency to access RewardProvenance
      -- QueryPoolRanking
@@ -283,7 +285,7 @@ toConsensusQueryShelleyBased erainmode (QueryUTxO (Just addrs)) =
     addrs' :: Set (Shelley.Addr Consensus.StandardCrypto)
     addrs' = toShelleyAddrSet (eraInModeToEra erainmode) addrs
 
-toConsensusQueryShelleyBased erainmode (QueryStakeAddresses creds) =
+toConsensusQueryShelleyBased erainmode (QueryStakeAddresses creds _nId) =
     Some (consensusQueryInEraInMode erainmode
             (Consensus.GetFilteredDelegationsAndRewardAccounts creds'))
   where
@@ -436,12 +438,13 @@ fromConsensusQueryResultShelleyBased (QueryUTxO Just{}) q' utxo' =
       Consensus.GetFilteredUTxO{} -> fromShelleyUTxO utxo'
       _                           -> fromConsensusQueryResultMismatch
 
-fromConsensusQueryResultShelleyBased QueryStakeAddresses{} q' r' =
+fromConsensusQueryResultShelleyBased (QueryStakeAddresses _ nId) q' r' =
     case q' of
       Consensus.GetFilteredDelegationsAndRewardAccounts{}
         -> let (delegs, rwaccs) = r'
-            in (fromShelleyRewardAccounts rwaccs,
-                fromShelleyDelegations delegs)
+           in ( Map.mapKeys (makeStakeAddress nId) $ fromShelleyRewardAccounts rwaccs
+              , Map.mapKeys (makeStakeAddress nId) $ fromShelleyDelegations delegs
+              )
       _ -> fromConsensusQueryResultMismatch
 
 fromConsensusQueryResultShelleyBased QueryLedgerState{} q' r' =
