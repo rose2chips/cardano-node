@@ -1,6 +1,8 @@
+{-# LANGUAGE DerivingStrategies #-}
 {-# LANGUAGE EmptyCase #-}
 {-# LANGUAGE FlexibleContexts #-}
 {-# LANGUAGE GADTs #-}
+{-# LANGUAGE GeneralisedNewtypeDeriving #-}
 {-# LANGUAGE ScopedTypeVariables #-}
 {-# LANGUAGE StandaloneDeriving #-}
 
@@ -30,6 +32,7 @@ module Cardano.Api.Query (
     ProtocolState(..),
   ) where
 
+import           Data.Aeson (ToJSON)
 import           Data.Bifunctor (bimap)
 import           Data.Map (Map)
 import qualified Data.Map as Map
@@ -171,6 +174,7 @@ newtype LedgerState era
 
 newtype ProtocolState era
   = ProtocolState (Serialised (Shelley.ChainDepState (Ledger.Crypto (ShelleyLedgerEra era))))
+deriving newtype instance IsCardanoEra era => ToJSON (UTxO era)
 
 toShelleyAddrSet :: CardanoEra era
                  -> Set AddressAny
