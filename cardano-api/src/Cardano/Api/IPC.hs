@@ -15,14 +15,27 @@
 -- | Node IPC protocols
 --
 module Cardano.Api.IPC (
+    -- TODO: Cardano.Api.Block module is not exported by this package. Shoudl it
+    -- be?
+    Block(Block),
+    ChainPoint,
+    ChainTip,
 
     -- * Node interaction
     -- | Operations that involve talking to a local Cardano node.
     connectToLocalNode,
     LocalNodeConnectInfo(..),
     localConsensusMode,
+    ByronMode,
+    ShelleyMode,
+    CardanoMode,
     LocalNodeClientProtocols(..),
     LocalNodeClientProtocolsInMode,
+
+    -- TODO: Cardano.Api.Modes module is not exported by this package. Shoudl it
+    -- be?
+    ConsensusModeParams(..),
+
 --  connectToRemoteNode,
 
     -- *** Chain sync protocol

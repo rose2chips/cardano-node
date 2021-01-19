@@ -575,7 +575,7 @@ import qualified Shelley.Spec.Ledger.PParams as Shelley
 
 --
 -- Other config and common types
---
+import           Cardano.Api.Block
 import           Cardano.Api.Protocol.Byron (mkNodeClientProtocolByron)
 import           Cardano.Api.Protocol.Cardano (mkNodeClientProtocolCardano)
 import           Cardano.Api.Protocol.Shelley (mkNodeClientProtocolShelley)
