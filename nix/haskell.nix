@@ -25,7 +25,7 @@ let
       src = ../.;
   };
 
-  # It is important these match in bot calls to cabalProject or `cabal configure`
+  # It is important this matches in both calls to cabalProject or `cabal configure`
   # will run twice.
   cabalProjectLocal = ''
     allow-newer: terminfo:base
