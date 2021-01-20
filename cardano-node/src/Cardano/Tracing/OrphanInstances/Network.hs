@@ -755,7 +755,7 @@ instance ToObject (AnyMessageAndAgency ps)
 
 
 instance ToObject (TraceTxSubmissionInbound txid tx) where
-  toObject _verb (TraceTxSubmissionInbound _ _ _) =
+  toObject _verb (TraceTxSubmissions _ _) =
     mkObject [ "kind" .= String "TraceTxSubmissionInbound" ]
 
 

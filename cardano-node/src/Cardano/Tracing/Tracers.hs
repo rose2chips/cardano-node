@@ -95,6 +95,7 @@ import           Cardano.Node.Protocol.Byron ()
 import           Cardano.Node.Protocol.Shelley ()
 import           Ouroboros.Consensus.MiniProtocol.BlockFetch.Server
 import           Ouroboros.Consensus.MiniProtocol.ChainSync.Server
+import           Ouroboros.Network.TxSubmission.Inbound
 
 import qualified Ouroboros.Network.Diffusion as ND
 import qualified Control.Concurrent.STM as STM
@@ -415,7 +416,7 @@ traceChainMetrics tr = Tracer $ \ev ->
 traceD :: Trace IO a -> LOMeta -> Text -> Double -> IO ()
 traceD tr meta msg d = traceNamedObject tr (meta, LogValue msg (PureD d))
 
-traceI :: Trace IO a -> LOMeta -> Text -> Word64 -> IO ()
+traceI :: Integral i => Trace IO a -> LOMeta -> Text -> i -> IO ()
 traceI tr meta msg i = traceNamedObject tr (meta, LogValue msg (PureI (fromIntegral i)))
 
 --------------------------------------------------------------------------------
@@ -460,8 +461,10 @@ mkConsensusTracers trSel verb tr nodeKern fStats = do
   forgeTracers <- mkForgeTracers
   meta <- mkLOMeta Critical Public
 
-  tHeadersServed <- STM.newTVarIO 0
-  tBlocksServed <- STM.newTVarIO 0
+  tHeadersServed <- STM.newTVarIO @Int 0
+  tBlocksServed <- STM.newTVarIO @Int 0
+  tSubmissionsSubmitted <- STM.newTVarIO 0
+  tSubmissionsSuccessful <- STM.newTVarIO 0
 
   pure Consensus.Tracers
     { Consensus.chainSyncClientTracer = tracerOnOff (traceChainSyncClient trSel) verb "ChainSyncClient" tr
@@ -480,10 +483,23 @@ mkConsensusTracers trSel verb tr nodeKern fStats = do
           traceWith (annotateSeverity . toLogObject' verb $ appendName "BlockFetchServer" tr) ev
           when (isTraceBlockFetchServerBlockCount ev) $ do
             count <- STM.atomically $ STM.modifyTVar tBlocksServed (+1) >> STM.readTVar tBlocksServed
-            traceI trmet meta "served.header.count" count
+            traceI trmet meta "served.block.count" count
     , Consensus.forgeStateInfoTracer = tracerOnOff' (traceForgeStateInfo trSel) $
         forgeStateInfoTracer (Proxy @ blk) trSel tr
-    , Consensus.txInboundTracer = tracerOnOff (traceTxInbound trSel) verb "TxInbound" tr
+    , Consensus.txInboundTracer = tracerOnOff' (traceTxInbound trSel) $
+        Tracer $ \ev -> do
+          traceWith (annotateSeverity . toLogObject' verb $ appendName "TxInbound" tr) ev
+          case ev of
+            TraceLabelPeer _ (TraceTxSubmissions collected written) -> do
+              totalSubmitted <- STM.atomically $ do
+                STM.modifyTVar tSubmissionsSubmitted (+ collected)
+                STM.readTVar tSubmissionsSubmitted
+              traceI trmet meta "submissions.submitted.count" totalSubmitted
+
+              totalWritten <- STM.atomically $ do
+                STM.modifyTVar tSubmissionsSuccessful (+ written)
+                STM.readTVar tSubmissionsSuccessful
+              traceI trmet meta "submissions.successful.count" totalWritten
     , Consensus.txOutboundTracer = tracerOnOff (traceTxOutbound trSel) verb "TxOutbound" tr
     , Consensus.localTxSubmissionServerTracer = tracerOnOff (traceLocalTxSubmissionServer trSel) verb "LocalTxSubmissionServer" tr
     , Consensus.mempoolTracer = tracerOnOff' (traceMempool trSel) $ mempoolTracer trSel tr fStats
